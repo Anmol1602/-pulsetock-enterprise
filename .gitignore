@@ -1,0 +1,27 @@
+# General
+.DS_Store
+.env
+*.log
+
+# Backend
+backend/__pycache__/
+backend/*.pyc
+backend/.pytest_cache/
+backend/.venv/
+backend/venv/
+backend/*.db
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.eslintcache
+frontend/npm-debug.log*
+
+# Docker
+.docker_data/
+postgres_data/
+
+# Gemini
+.gemini/
+MEMORY.md
+GEMINI.md
