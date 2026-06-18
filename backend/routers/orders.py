@@ -11,7 +11,7 @@ def create_order(order: schemas.OrderCreate, db: Session = Depends(get_db), curr
     return crud.create_order(db=db, order=order)
 
 @router.get("/", response_model=schemas.PaginatedResponse[schemas.Order])
-def read_orders(page: int = 1, limit: int = 100, sort_by: str = "id", order: str = "desc", db: Session = Depends(get_db)):
+def read_orders(page: int = 1, limit: int = 100, sort_by: str = "id", order: str = "desc", db: Session = Depends(get_db), current_user: models.User = Depends(security.get_current_user)):
     skip = (page - 1) * limit
     orders, total = crud.get_orders(db, skip=skip, limit=limit, sort_by=sort_by, order=order)
     total_pages = (total + limit - 1) // limit if limit > 0 else 1
@@ -24,7 +24,7 @@ def read_orders(page: int = 1, limit: int = 100, sort_by: str = "id", order: str
     }
 
 @router.get("/{order_id}", response_model=schemas.Order)
-def read_order(order_id: int, db: Session = Depends(get_db)):
+def read_order(order_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(security.get_current_user)):
     db_order = crud.get_order(db, order_id=order_id)
     if db_order is None:
         raise HTTPException(status_code=404, detail="Order not found")

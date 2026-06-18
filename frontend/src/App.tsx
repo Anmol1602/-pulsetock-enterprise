@@ -143,6 +143,10 @@ function App() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(productForm),
       });
+      if (res.status === 401) {
+          handleLogout();
+          return;
+      }
       if (!res.ok) throw new Error(await res.text());
       setShowModal(null);
       fetchData();
@@ -160,24 +164,16 @@ function App() {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
       });
-      if (!res.ok) { const err = await res.json(); throw new Error(err.detail || `${noun} deletion failed`); }
+      if (res.status === 401) {
+          handleLogout();
+          return;
+      }
+      if (!res.ok) { 
+          const err = await res.json();
+          throw new Error(err.detail || `${noun} deletion failed`); 
+      }
       fetchData();
     } catch (err: any) { alert(`Error: ${err.message}`); }
-  };
-
-  const handleDeleteProduct = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this product?')) return;
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    try {
-      const res = await fetch(`${API_URL}/products/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(await res.text());
-      fetchData();
-    } catch (err: any) {
-      alert(`Delete failed: ${err.message}`);
-    }
   };
 
   const handleCustomerSubmit = async (e: React.FormEvent) => {
@@ -190,26 +186,15 @@ function App() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(customerForm),
       });
+      if (res.status === 401) {
+          handleLogout();
+          return;
+      }
       if (!res.ok) throw new Error(await res.text());
       setShowModal(null);
       fetchData();
     } catch (err: any) {
       setActionError(err.message);
-    }
-  };
-
-  const handleDeleteCustomer = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this customer?')) return;
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-    try {
-      const res = await fetch(`${API_URL}/customers/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(await res.text());
-      fetchData();
-    } catch (err: any) {
-      alert(`Delete failed: ${err.message}`);
     }
   };
 
@@ -233,6 +218,10 @@ function App() {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
+      if (res.status === 401) {
+          handleLogout();
+          return;
+      }
       if (!res.ok) {
           const errData = await res.json();
           throw new Error(errData.detail || 'Failed to create order');
@@ -242,24 +231,6 @@ function App() {
     } catch (err: any) {
       setActionError(err.message);
     }
-  };
-
-  const handleDeleteOrder = async (id: number) => {
-      if (!confirm('Cancel this order and restore inventory?')) return;
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      try {
-        const res = await fetch(`${API_URL}/orders/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (!res.ok) {
-            const errData = await res.json();
-            throw new Error(errData.detail || 'Failed to cancel order');
-        }
-        fetchData();
-        } catch (err: any) {
-        alert(`Cancel failed: ${err.message}`);
-        }
   };
 
   // --- End CRUD Handlers ---
@@ -369,10 +340,14 @@ function App() {
     setSyncing(true);
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     try {
-      await fetch(`${API_URL}/system/trigger-sync`, { 
+      const res = await fetch(`${API_URL}/system/trigger-sync`, { 
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (res.status === 401) {
+          handleLogout();
+          return;
+      }
       await fetchData();
     } catch (err) {
       console.error('Sync failed', err);
@@ -384,10 +359,14 @@ function App() {
   const triggerSeed = async () => {
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     try {
-      await fetch(`${API_URL}/system/seed`, { 
+      const res = await fetch(`${API_URL}/system/seed`, { 
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      if (res.status === 401) {
+          handleLogout();
+          return;
+      }
       await fetchData();
     } catch (err) {
       console.error('Seed failed', err);
@@ -638,7 +617,7 @@ function App() {
                       <td>{customer.phone_number || 'N/A'}</td>
                       <td>
                         <div className="action-buttons">
-                          <button className="icon-btn delete" onClick={() => handleDeleteCustomer(customer.id)}>🗑️</button>
+                          <button className="icon-btn delete" onClick={() => handleDelete('customer', customer.id)}>🗑️</button>
                         </div>
                       </td>
                     </tr>

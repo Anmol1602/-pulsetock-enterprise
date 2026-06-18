@@ -14,7 +14,7 @@ def create_customer(customer: schemas.CustomerCreate, db: Session = Depends(get_
     return crud.create_customer(db=db, customer=customer)
 
 @router.get("/", response_model=schemas.PaginatedResponse[schemas.Customer])
-def read_customers(page: int = 1, limit: int = 100, sort_by: str = "id", order: str = "asc", search: str = None, db: Session = Depends(get_db)):
+def read_customers(page: int = 1, limit: int = 100, sort_by: str = "id", order: str = "asc", search: str = None, db: Session = Depends(get_db), current_user: models.User = Depends(security.get_current_user)):
     skip = (page - 1) * limit
     customers, total = crud.get_customers(db, skip=skip, limit=limit, sort_by=sort_by, order=order, search=search)
     total_pages = (total + limit - 1) // limit if limit > 0 else 1
@@ -27,7 +27,7 @@ def read_customers(page: int = 1, limit: int = 100, sort_by: str = "id", order: 
     }
 
 @router.get("/{customer_id}", response_model=schemas.Customer)
-def read_customer(customer_id: int, db: Session = Depends(get_db)):
+def read_customer(customer_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(security.get_current_user)):
     db_customer = crud.get_customer(db, customer_id=customer_id)
     if db_customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")

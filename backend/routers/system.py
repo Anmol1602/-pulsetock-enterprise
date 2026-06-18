@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 from sqlalchemy import func
-import models, schemas, system_service
+import models, schemas, system_service, security
 from database import get_db
 
 router = APIRouter()
 
 @router.get("/stats")
-def get_global_stats(db: Session = Depends(get_db)):
+def get_global_stats(db: Session = Depends(get_db), current_user: models.User = Depends(security.get_current_user)):
     total_products = db.query(func.count(models.Product.id)).scalar()
     total_inventory_value = db.query(func.sum(models.Product.price * models.Product.quantity)).scalar() or 0.0
     total_revenue = db.query(func.sum(models.Order.total_amount)).scalar() or 0.0
@@ -26,12 +26,12 @@ def get_global_stats(db: Session = Depends(get_db)):
     }
 
 @router.post("/trigger-sync")
-def trigger_sync():
+def trigger_sync(current_user: models.User = Depends(security.check_admin_role)):
     success = system_service.run_inventory_integrity_check()
     return {"status": "success" if success else "failed"}
 
 @router.post("/seed")
-def seed_database(db: Session = Depends(get_db)):
+def seed_database(db: Session = Depends(get_db), current_user: models.User = Depends(security.check_admin_role)):
     import seed
     try:
         seed.seed_data()
@@ -40,7 +40,7 @@ def seed_database(db: Session = Depends(get_db)):
         return {"status": "failed", "message": str(e)}
 
 @router.get("/audit-logs", response_model=List[schemas.AuditLog])
-def read_audit_logs(skip: int = 0, limit: int = 50, db: Session = Depends(get_db)):
+def read_audit_logs(skip: int = 0, limit: int = 50, db: Session = Depends(get_db), current_user: models.User = Depends(security.get_current_user)):
     return db.query(models.AuditLog).order_by(models.AuditLog.created_at.desc()).offset(skip).limit(limit).all()
 
 @router.get("/health")
