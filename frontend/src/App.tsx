@@ -246,6 +246,24 @@ function App() {
         } catch (err: any) {
         alert(`Cancel failed: ${err.message}`);
         }
+  };
+
+  const handleDeleteOrder = async (id: number) => {
+      if (!confirm('Cancel this order and restore inventory?')) return;
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      try {
+        const res = await fetch(`${API_URL}/orders/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || 'Failed to cancel order');
+        }
+        fetchData();
+        } catch (err: any) {
+        alert(`Cancel failed: ${err.message}`);
+        }
         };
 
   // --- End CRUD Handlers ---
