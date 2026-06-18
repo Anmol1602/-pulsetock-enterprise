@@ -56,9 +56,14 @@ async def log_requests(request: Request, call_next):
     return response
 
 # Enable CORS
+origins = [
+    "http://localhost:5173",  # Local dev
+    "https://pulsetock-enterprise.vercel.app"  # Deployed frontend
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
