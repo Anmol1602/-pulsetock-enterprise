@@ -58,6 +58,25 @@ The system follows a **decoupled service-oriented architecture**, containerized 
     - **Frontend:** [http://localhost:5173](http://localhost:5173)
     - **API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
 
+## 🧭 Reviewer Navigation Guide (How to Test)
+
+To fully evaluate the platform's capabilities, please follow this flow:
+
+### 1. The Dashboard (Home)
+- **Global Metrics:** Observe the top stat cards. These are calculated globally across the database (Total Revenue, Inventory Value, Low Stock Alerts).
+- **Responsive Tables:** View the paginated lists of Products and Orders. Notice the dynamic color-coded status pills (e.g., Shipped, Cancelled).
+
+### 2. Management Modules (Full CRUD)
+- **Product Management:** Click **"+ New Product"**. Test the form validation. Try editing an existing product's price or stock level.
+- **Customer Management:** Navigate to the **"👥 Customers"** tab. Add a new customer.
+- **Order Engine:** Navigate to **"🛒 Orders"** and click **"+ New Order"**.
+  - *Business Logic Test:* Create an order. Observe that the total amount is calculated automatically by the backend, and the chosen product's inventory is immediately deducted.
+  - *Cancellation:* Click the 🚫 icon on an order. The order status will change to 'cancelled' and the inventory will be restored.
+
+### 3. System Depth & Reliability
+- **Audit Trail:** Navigate to **"⚙️ System Depth"**. Every action (especially financial/inventory changes) is logged here deterministically.
+- **Database Seeding:** Click the **"Seed Database"** button to instantly populate the system with a rich, interconnected graph of dummy data (Users, Products, Customers, Orders). This is perfect for resetting the state during testing.
+
 ---
 
 ## 🛠️ Key Features & Engineering Decisions

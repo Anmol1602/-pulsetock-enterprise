@@ -10,12 +10,27 @@ interface Product {
   quantity: number;
 }
 
+interface OrderItem {
+  id: number;
+  product_id: number;
+  quantity: number;
+  price_at_time: number;
+}
+
 interface Order {
   id: number;
   customer_id: number;
   total_amount: number;
   status: string;
   created_at: string;
+  items?: OrderItem[];
+}
+
+interface Customer {
+  id: number;
+  full_name: string;
+  email: string;
+  phone_number?: string;
 }
 
 interface AuditLog {
@@ -41,6 +56,8 @@ interface SystemStats {
   total_inventory_value: number;
   total_revenue: number;
   total_audit_logs: number;
+  total_customers: number;
+  low_stock_products: number;
 }
 
 function App() {
@@ -48,17 +65,30 @@ function App() {
   const [userEmail, setUserEmail] = useState<string | null>(localStorage.getItem('userEmail'));
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [stats, setStats] = useState<SystemStats | null>(null);
-  const [activeTab, setActiveTab] = useState<'inventory' | 'orders' | 'system'>('inventory');
+  const [activeTab, setActiveTab] = useState<'inventory' | 'orders' | 'customers' | 'system'>('inventory');
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  // Modal & Form States
+  const [showModal, setShowModal] = useState<'product' | 'customer' | 'order' | null>(null);
+  const [editingItem, setEditingItem] = useState<any>(null);
+  
+  // Product Form State
+  const [productForm, setProductForm] = useState({ name: '', sku: '', price: 0, quantity: 0 });
+  // Customer Form State
+  const [customerForm, setCustomerForm] = useState({ full_name: '', email: '', phone_number: '' });
+  // Order Form State
+  const [orderForm, setOrderForm] = useState({ customer_id: '', items: [{ product_id: '', quantity: 1 }] });
+
   const [isRegistering, setIsRegistering] = useState(false);
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [registerName, setRegisterName] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [actionError, setActionError] = useState('');
 
   const fetchData = () => {
     if (!token) return;
@@ -66,22 +96,26 @@ function App() {
     const headers = { 'Authorization': `Bearer ${token}` };
 
     return Promise.all([
-      fetch(`${API_URL}/products/`, { headers }).then(res => res.json()),
-      fetch(`${API_URL}/orders/`, { headers }).then(res => res.json()),
-      fetch(`${API_URL}/system/audit-logs`, { headers }).then(res => res.json()),
-      fetch(`${API_URL}/system/health`, { headers }).then(res => res.json()),
-      fetch(`${API_URL}/system/stats`, { headers }).then(res => res.json())
-    ]).then(([productsData, ordersData, auditData, healthData, statsData]) => {
+      fetch(`${API_URL}/products/`, { headers }).then(res => { if (res.status === 401) throw new Error('401'); return res.json(); }),
+      fetch(`${API_URL}/orders/`, { headers }).then(res => { if (res.status === 401) throw new Error('401'); return res.json(); }),
+      fetch(`${API_URL}/customers/`, { headers }).then(res => { if (res.status === 401) throw new Error('401'); return res.json(); }),
+      fetch(`${API_URL}/system/audit-logs`, { headers }).then(res => { if (res.status === 401) throw new Error('401'); return res.json(); }),
+      fetch(`${API_URL}/system/health`, { headers }).then(res => { if (res.status === 401) throw new Error('401'); return res.json(); }),
+      fetch(`${API_URL}/system/stats`, { headers }).then(res => { if (res.status === 401) throw new Error('401'); return res.json(); })
+    ]).then(([productsData, ordersData, customersData, auditData, healthData, statsData]) => {
       // Backend returns paginated response: { data: [...], total: ... }
       setProducts(productsData.data || []);
       setOrders(ordersData.data || []);
+      setCustomers(customersData.data || []);
       setAuditLogs(auditData || []);
       setHealth(healthData);
       setStats(statsData);
       setLoading(false);
     }).catch(err => {
-      console.error(err);
-      if (err.message.includes('401')) handleLogout();
+      console.error('Fetch error:', err);
+      if (err.message === '401') {
+          handleLogout();
+      }
       setLoading(false);
     });
   };
@@ -93,6 +127,125 @@ function App() {
       return () => clearInterval(interval);
     }
   }, [token]);
+
+  // --- CRUD Handlers ---
+
+  const handleProductSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionError('');
+    const API_URL = 'http://localhost:8000';
+    const url = editingItem ? `${API_URL}/products/${editingItem.id}` : `${API_URL}/products/`;
+    const method = editingItem ? 'PUT' : 'POST';
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(productForm),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setShowModal(null);
+      fetchData();
+    } catch (err: any) {
+      setActionError(err.message);
+    }
+  };
+
+  const handleDeleteProduct = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this product?')) return;
+    const API_URL = 'http://localhost:8000';
+    try {
+      const res = await fetch(`${API_URL}/products/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      fetchData();
+    } catch (err: any) {
+      alert(`Delete failed: ${err.message}`);
+    }
+  };
+
+  const handleCustomerSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionError('');
+    const API_URL = 'http://localhost:8000';
+    try {
+      const res = await fetch(`${API_URL}/customers/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(customerForm),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      setShowModal(null);
+      fetchData();
+    } catch (err: any) {
+      setActionError(err.message);
+    }
+  };
+
+  const handleDeleteCustomer = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this customer?')) return;
+    const API_URL = 'http://localhost:8000';
+    try {
+      const res = await fetch(`${API_URL}/customers/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error(await res.text());
+      fetchData();
+    } catch (err: any) {
+      alert(`Delete failed: ${err.message}`);
+    }
+  };
+
+  const handleOrderSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionError('');
+    const API_URL = 'http://localhost:8000';
+    
+    // Clean up empty items
+    const payload = {
+      customer_id: parseInt(orderForm.customer_id),
+      items: orderForm.items.filter(i => i.product_id).map(i => ({
+        product_id: parseInt(i.product_id),
+        quantity: parseInt(i.quantity.toString())
+      }))
+    };
+
+    try {
+      const res = await fetch(`${API_URL}/orders/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.detail || 'Failed to create order');
+      }
+      setShowModal(null);
+      fetchData();
+    } catch (err: any) {
+      setActionError(err.message);
+    }
+  };
+
+  const handleDeleteOrder = async (id: number) => {
+      if (!confirm('Cancel this order and restore inventory?')) return;
+      const API_URL = 'http://localhost:8000';
+      try {
+        const res = await fetch(`${API_URL}/orders/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        if (!res.ok) throw new Error(await res.text());
+        fetchData();
+      } catch (err: any) {
+        alert(`Cancel failed: ${err.message}`);
+      }
+  };
+
+  // --- End CRUD Handlers ---
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -326,6 +479,12 @@ function App() {
             <span className="icon">📊</span> Inventory
           </button>
           <button 
+            className={activeTab === 'customers' ? 'active' : ''} 
+            onClick={() => setActiveTab('customers')}
+          >
+            <span className="icon">👥</span> Customers
+          </button>
+          <button 
             className={activeTab === 'orders' ? 'active' : ''} 
             onClick={() => setActiveTab('orders')}
           >
@@ -350,11 +509,23 @@ function App() {
 
       <main className="content">
         <header className="top-bar">
-          <h1>{
-            activeTab === 'inventory' ? 'Inventory Overview' : 
-            activeTab === 'orders' ? 'Recent Orders' : 
-            'System Reliability & Audit'
-          }</h1>
+          <div className="header-left">
+            <h1>{
+              activeTab === 'inventory' ? 'Inventory Overview' : 
+              activeTab === 'customers' ? 'Customer Management' :
+              activeTab === 'orders' ? 'Recent Orders' : 
+              'System Reliability & Audit'
+            }</h1>
+            {activeTab === 'inventory' && (
+              <button className="badge-btn" onClick={() => { setEditingItem(null); setProductForm({name:'', sku:'', price:0, quantity:0}); setShowModal('product'); }}>+ New Product</button>
+            )}
+            {activeTab === 'customers' && (
+              <button className="badge-btn" onClick={() => { setEditingItem(null); setCustomerForm({full_name:'', email:'', phone_number:''}); setShowModal('customer'); }}>+ New Customer</button>
+            )}
+            {activeTab === 'orders' && (
+              <button className="badge-btn" onClick={() => { setEditingItem(null); setOrderForm({customer_id: '', items: [{product_id: '', quantity: 1}]}); setShowModal('order'); }}>+ New Order</button>
+            )}
+          </div>
           <div className="user-profile">
             <span>{userEmail}</span>
             <div className="avatar">{userEmail?.substring(0, 2).toUpperCase()}</div>
@@ -397,6 +568,7 @@ function App() {
                     <th>Unit Price</th>
                     <th>Stock Level</th>
                     <th>Value</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -417,6 +589,41 @@ function App() {
                         </div>
                       </td>
                       <td>${(product.price * product.quantity).toLocaleString()}</td>
+                      <td>
+                        <div className="action-buttons">
+                          <button className="icon-btn edit" onClick={() => { setEditingItem(product); setProductForm(product); setShowModal('product'); }}>✏️</button>
+                          <button className="icon-btn delete" onClick={() => handleDeleteProduct(product.id)}>🗑️</button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : activeTab === 'customers' ? (
+            <div className="card table-card">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {customers.map(customer => (
+                    <tr key={customer.id}>
+                      <td>#{customer.id}</td>
+                      <td className="p-name">{customer.full_name}</td>
+                      <td>{customer.email}</td>
+                      <td>{customer.phone_number || 'N/A'}</td>
+                      <td>
+                        <div className="action-buttons">
+                          <button className="icon-btn delete" onClick={() => handleDeleteCustomer(customer.id)}>🗑️</button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -432,6 +639,7 @@ function App() {
                     <th>Customer ID</th>
                     <th>Amount</th>
                     <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -450,6 +658,11 @@ function App() {
                         }`}>
                           {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                         </span>
+                      </td>
+                      <td>
+                        {order.status !== 'cancelled' && (
+                           <button className="icon-btn delete" onClick={() => handleDeleteOrder(order.id)}>🚫</button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -501,6 +714,116 @@ function App() {
           )}
         </div>
       </main>
+
+      {/* --- Modals --- */}
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <header className="modal-header">
+              <h2>{editingItem ? 'Edit' : 'New'} {showModal.charAt(0).toUpperCase() + showModal.slice(1)}</h2>
+              <button className="close-btn" onClick={() => setShowModal(null)}>×</button>
+            </header>
+            
+            <div className="modal-body">
+              {actionError && <div className="action-error">{actionError}</div>}
+              
+              {showModal === 'product' && (
+                <form onSubmit={handleProductSubmit}>
+                  <div className="form-group">
+                    <label>Product Name</label>
+                    <input type="text" value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} required />
+                  </div>
+                  <div className="form-group">
+                    <label>SKU</label>
+                    <input type="text" value={productForm.sku} onChange={e => setProductForm({...productForm, sku: e.target.value})} required disabled={!!editingItem} />
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Price ($)</label>
+                      <input type="number" step="0.01" value={productForm.price} onChange={e => setProductForm({...productForm, price: parseFloat(e.target.value)})} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Stock Quantity</label>
+                      <input type="number" value={productForm.quantity} onChange={e => setProductForm({...productForm, quantity: parseInt(e.target.value)})} required />
+                    </div>
+                  </div>
+                  <button type="submit" className="login-btn">{editingItem ? 'Update' : 'Create'} Product</button>
+                </form>
+              )}
+
+              {showModal === 'customer' && (
+                <form onSubmit={handleCustomerSubmit}>
+                  <div className="form-group">
+                    <label>Full Name</label>
+                    <input type="text" value={customerForm.full_name} onChange={e => setCustomerForm({...customerForm, full_name: e.target.value})} required />
+                  </div>
+                  <div className="form-group">
+                    <label>Email Address</label>
+                    <input type="email" value={customerForm.email} onChange={e => setCustomerForm({...customerForm, email: e.target.value})} required />
+                  </div>
+                  <div className="form-group">
+                    <label>Phone Number</label>
+                    <input type="text" value={customerForm.phone_number} onChange={e => setCustomerForm({...customerForm, phone_number: e.target.value})} />
+                  </div>
+                  <button type="submit" className="login-btn">Register Customer</button>
+                </form>
+              )}
+
+              {showModal === 'order' && (
+                <form onSubmit={handleOrderSubmit}>
+                  <div className="form-group">
+                    <label>Customer</label>
+                    <select value={orderForm.customer_id} onChange={e => setOrderForm({...orderForm, customer_id: e.target.value})} required>
+                      <option value="">Select Customer</option>
+                      {customers.map(c => <option key={c.id} value={c.id}>{c.full_name} ({c.email})</option>)}
+                    </select>
+                  </div>
+                  
+                  <div className="order-items-builder">
+                    <label>Products & Quantities</label>
+                    {orderForm.items.map((item, idx) => (
+                      <div key={idx} className="form-row item-row">
+                        <select 
+                          value={item.product_id} 
+                          onChange={e => {
+                            const newItems = [...orderForm.items];
+                            newItems[idx].product_id = e.target.value;
+                            setOrderForm({...orderForm, items: newItems});
+                          }}
+                          required
+                        >
+                          <option value="">Select Product</option>
+                          {products.map(p => <option key={p.id} value={p.id}>{p.name} (${p.price} | Stock: {p.quantity})</option>)}
+                        </select>
+                        <input 
+                          type="number" 
+                          min="1" 
+                          value={item.quantity} 
+                          onChange={e => {
+                            const newItems = [...orderForm.items];
+                            newItems[idx].quantity = parseInt(e.target.value);
+                            setOrderForm({...orderForm, items: newItems});
+                          }}
+                          required 
+                          style={{width: '80px'}}
+                        />
+                        {idx > 0 && <button type="button" className="icon-btn delete" onClick={() => {
+                          const newItems = orderForm.items.filter((_, i) => i !== idx);
+                          setOrderForm({...orderForm, items: newItems});
+                        }}>×</button>}
+                      </div>
+                    ))}
+                    <button type="button" className="badge-btn secondary" style={{marginBottom: '1rem'}} onClick={() => setOrderForm({...orderForm, items: [...orderForm.items, {product_id: '', quantity: 1}]})}>
+                      + Add Item
+                    </button>
+                  </div>
+                  <button type="submit" className="login-btn">Create Order</button>
+                </form>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

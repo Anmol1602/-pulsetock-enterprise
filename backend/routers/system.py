@@ -13,12 +13,16 @@ def get_global_stats(db: Session = Depends(get_db)):
     total_inventory_value = db.query(func.sum(models.Product.price * models.Product.quantity)).scalar() or 0.0
     total_revenue = db.query(func.sum(models.Order.total_amount)).scalar() or 0.0
     total_audit_logs = db.query(func.count(models.AuditLog.id)).scalar()
+    total_customers = db.query(func.count(models.Customer.id)).scalar()
+    low_stock_products = db.query(func.count(models.Product.id)).filter(models.Product.quantity < 5).scalar()
     
     return {
         "total_products": total_products,
         "total_inventory_value": total_inventory_value,
         "total_revenue": total_revenue,
-        "total_audit_logs": total_audit_logs
+        "total_audit_logs": total_audit_logs,
+        "total_customers": total_customers,
+        "low_stock_products": low_stock_products
     }
 
 @router.post("/trigger-sync")
