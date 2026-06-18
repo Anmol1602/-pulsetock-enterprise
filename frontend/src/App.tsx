@@ -238,12 +238,15 @@ function App() {
           method: 'DELETE',
           headers: { 'Authorization': `Bearer ${token}` },
         });
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || 'Failed to cancel order');
+        }
         fetchData();
-      } catch (err: any) {
+        } catch (err: any) {
         alert(`Cancel failed: ${err.message}`);
-      }
-  };
+        }
+        };
 
   // --- End CRUD Handlers ---
 
