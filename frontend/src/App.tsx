@@ -92,7 +92,7 @@ function App() {
 
   const fetchData = () => {
     if (!token) return;
-    const API_URL = 'http://localhost:8000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     const headers = { 'Authorization': `Bearer ${token}` };
 
     return Promise.all([
@@ -133,7 +133,7 @@ function App() {
   const handleProductSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionError('');
-    const API_URL = 'http://localhost:8000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     const url = editingItem ? `${API_URL}/products/${editingItem.id}` : `${API_URL}/products/`;
     const method = editingItem ? 'PUT' : 'POST';
 
@@ -153,7 +153,7 @@ function App() {
 
   const handleDeleteProduct = async (id: number) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
-    const API_URL = 'http://localhost:8000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     try {
       const res = await fetch(`${API_URL}/products/${id}`, {
         method: 'DELETE',
@@ -169,7 +169,7 @@ function App() {
   const handleCustomerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionError('');
-    const API_URL = 'http://localhost:8000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     try {
       const res = await fetch(`${API_URL}/customers/`, {
         method: 'POST',
@@ -186,7 +186,7 @@ function App() {
 
   const handleDeleteCustomer = async (id: number) => {
     if (!confirm('Are you sure you want to delete this customer?')) return;
-    const API_URL = 'http://localhost:8000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     try {
       const res = await fetch(`${API_URL}/customers/${id}`, {
         method: 'DELETE',
@@ -202,7 +202,7 @@ function App() {
   const handleOrderSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionError('');
-    const API_URL = 'http://localhost:8000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     
     // Clean up empty items
     const payload = {
@@ -232,7 +232,7 @@ function App() {
 
   const handleDeleteOrder = async (id: number) => {
       if (!confirm('Cancel this order and restore inventory?')) return;
-      const API_URL = 'http://localhost:8000';
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
       try {
         const res = await fetch(`${API_URL}/orders/${id}`, {
           method: 'DELETE',
@@ -250,7 +250,7 @@ function App() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
-    const API_URL = 'http://localhost:8000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     
     const formData = new FormData();
     formData.append('username', loginEmail);
@@ -280,7 +280,7 @@ function App() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
-    const API_URL = 'http://localhost:8000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
     try {
       const res = await fetch(`${API_URL}/auth/register`, {
@@ -319,7 +319,7 @@ function App() {
   };
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
-    const API_URL = 'http://localhost:8000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     try {
       const res = await fetch(`${API_URL}/auth/google`, {
         method: 'POST',
@@ -350,7 +350,7 @@ function App() {
 
   const triggerManualSync = async () => {
     setSyncing(true);
-    const API_URL = 'http://localhost:8000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     try {
       await fetch(`${API_URL}/system/trigger-sync`, { 
         method: 'POST',
@@ -365,7 +365,7 @@ function App() {
   };
 
   const triggerSeed = async () => {
-    const API_URL = 'http://localhost:8000';
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
     try {
       await fetch(`${API_URL}/system/seed`, { 
         method: 'POST',
