@@ -151,6 +151,20 @@ function App() {
     }
   };
 
+  const handleDelete = async (type: 'product' | 'customer' | 'order', id: number) => {
+    const noun = type.charAt(0).toUpperCase() + type.slice(1);
+    if (!confirm(`Are you sure you want to delete this ${noun}?`)) return;
+    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    try {
+      const res = await fetch(`${API_URL}/${type}s/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (!res.ok) { const err = await res.json(); throw new Error(err.detail || `${noun} deletion failed`); }
+      fetchData();
+    } catch (err: any) { alert(`Error: ${err.message}`); }
+  };
+
   const handleDeleteProduct = async (id: number) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
     const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -246,7 +260,7 @@ function App() {
         } catch (err: any) {
         alert(`Cancel failed: ${err.message}`);
         }
-        };
+  };
 
   // --- End CRUD Handlers ---
 
@@ -595,7 +609,7 @@ function App() {
                       <td>
                         <div className="action-buttons">
                           <button className="icon-btn edit" onClick={() => { setEditingItem(product); setProductForm(product); setShowModal('product'); }}>✏️</button>
-                          <button className="icon-btn delete" onClick={() => handleDeleteProduct(product.id)}>🗑️</button>
+                          <button className="icon-btn delete" onClick={() => handleDelete('product', product.id)}>🗑️</button>
                         </div>
                       </td>
                     </tr>
@@ -664,7 +678,7 @@ function App() {
                       </td>
                       <td>
                         {order.status !== 'cancelled' && (
-                           <button className="icon-btn delete" onClick={() => handleDeleteOrder(order.id)}>🚫</button>
+                           <button className="icon-btn delete" onClick={() => handleDelete('order', order.id)}>🚫</button>
                         )}
                       </td>
                     </tr>
